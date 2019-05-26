@@ -1,8 +1,16 @@
 #pragma once
 #include "stddef.h"
 #include <d3d11.h>
+#include <d3dcompiler.h>
 
 #pragma comment(lib, "d3d11.lib")
+#pragma comment(lib,"d3dCompiler.lib")
+
+struct Vertex
+{
+	float position[3];
+	float color[4];
+};
 
 class DX11Renderer
 {
@@ -32,6 +40,19 @@ private:
 	void clear();
 	void draw();
 	void update();
+
+	// 頂点バッファ
+	ID3D11Buffer* mVertexBuffer;
+	HRESULT CreateVertexBuffer();
+
+	// 頂点シェーダー
+	ID3D11InputLayout* VertexLayout;
+	ID3D11VertexShader* mVertexShader;
+	HRESULT LoadVertexShader();
+
+	// ピクセルシェーダー
+	ID3D11PixelShader* mPixelShader;
+	HRESULT LoadPixelShader();
 
 public:
 	DX11Renderer(HWND *hwnd, int Width, int Height);

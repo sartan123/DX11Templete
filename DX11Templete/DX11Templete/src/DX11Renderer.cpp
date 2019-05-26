@@ -26,6 +26,10 @@ HRESULT DX11Renderer::Iinitialize()
 	hr = CreateSwapChain();
 	hr = CreateBackBuffer();
 	hr = CreateDepthStencilBuffer();
+
+	hr = CreateVertexBuffer();
+	hr = LoadPixelShader();
+	hr = LoadVertexShader();
 	return hr;
 }
 
@@ -215,7 +219,11 @@ void DX11Renderer::clear()
 // 描画処理
 void DX11Renderer::draw()
 {
-
+	//使用するシェーダーの登録
+	mDeviceContext->VSSetShader(mVertexShader, NULL, 0);
+	mDeviceContext->PSSetShader(mPixelShader, NULL, 0);
+	//プリミティブをレンダリング
+	mDeviceContext->Draw(3, 0);
 }
 
 // 画面更新
@@ -227,4 +235,90 @@ void DX11Renderer::update()
 	{
 		throw std::runtime_error("Failed to Screen Update");
 	}
+}
+
+// インデックスバッファの作成
+HRESULT DX11Renderer::CreateVertexBuffer()
+{
+	HRESULT hr;
+	D3D11_BUFFER_DESC idxBufferDesc;
+	idxBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	idxBufferDesc.ByteWidth = sizeof(UINT) * 36;
+	idxBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+	idxBufferDesc.CPUAccessFlags = 0;
+	idxBufferDesc.MiscFlags = 0;
+	idxBufferDesc.StructureByteStride = 0;
+	Vertex vertices[] =
+	{
+		{ { -0.5f,  0.5f, 0.5f }, { 1.0f, 0.0f, 0.0f, 1.0f } },
+		{ {  0.5f, -0.5f, 0.5f }, { 0.0f, 1.0f, 0.0f, 1.0f } },
+		{ { -0.5f, -0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f, 1.0f } }
+	};
+	D3D11_SUBRESOURCE_DATA InitData;
+	InitData.pSysMem = vertices;
+	hr = mDevice->CreateBuffer(&idxBufferDesc, &InitData, &mVertexBuffer);
+	if (FAILED(hr))
+	{
+		MessageBox(*mHwnd, "インデックスバッファの作成に失敗しました", 0, MB_OK);
+	}
+	UINT stride = sizeof(Vertex);
+	UINT offset = 0;
+	mDeviceContext->IASetVertexBuffers(0, 1, &mVertexBuffer, &stride, &offset);
+	mDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	return hr;
+}
+
+HRESULT DX11Renderer::LoadVertexShader()
+{
+	ID3DBlob *pCompiledShader = NULL;
+	//ブロブから頂点シェーダー作成
+	if (FAILED(D3DCompileFromFile(L"resource\\shader.hlsl", NULL, NULL, "VS", "vs_5_0", 0, 0, &pCompiledShader, NULL)))
+	{
+		MessageBox(0, "頂点シェーダー読み込み失敗", NULL, MB_OK);
+		return E_FAIL;
+	}
+	if (FAILED(mDevice->CreateVertexShader(pCompiledShader->GetBufferPointer(), pCompiledShader->GetBufferSize(), NULL, &mVertexShader)))
+	{
+		SafeRelease(pCompiledShader);
+		MessageBox(0, "頂点シェーダー作成失敗", NULL, MB_OK);
+		return E_FAIL;
+	}
+	//頂点インプットレイアウトを定義 
+	D3D11_INPUT_ELEMENT_DESC layout[] =
+	{
+	 { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	 { "COLOR",    0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	};
+	UINT numElements = sizeof(layout) / sizeof(layout[0]);
+
+	//頂点インプットレイアウトを作成
+	if (FAILED(mDevice->CreateInputLayout(layout, numElements, pCompiledShader->GetBufferPointer(), pCompiledShader->GetBufferSize(), &VertexLayout)))
+	{
+		SafeRelease(pCompiledShader);
+		return E_FAIL;
+	}
+	SafeRelease(pCompiledShader);
+
+	//頂点インプットレイアウトをセット
+	mDeviceContext->IASetInputLayout(VertexLayout);
+	return S_OK;
+}
+
+HRESULT DX11Renderer::LoadPixelShader()
+{
+	ID3DBlob *pCompiledShader = NULL;
+	//ブロブからピクセルシェーダー作成
+	if (FAILED(D3DCompileFromFile(L"resource\\shader.hlsl", NULL, NULL, "PS", "ps_5_0", 0, 0, &pCompiledShader, NULL)))
+	{
+		MessageBox(0, "ピクセルシェーダー読み込み失敗", NULL, MB_OK);
+		return E_FAIL;
+	}
+	if (FAILED(mDevice->CreatePixelShader(pCompiledShader->GetBufferPointer(), pCompiledShader->GetBufferSize(), NULL, &mPixelShader)))
+	{
+		SafeRelease(pCompiledShader);
+		MessageBox(0, "ピクセルシェーダー作成失敗", NULL, MB_OK);
+		return E_FAIL;
+	}
+	SafeRelease(pCompiledShader);
+	return S_OK;
 }

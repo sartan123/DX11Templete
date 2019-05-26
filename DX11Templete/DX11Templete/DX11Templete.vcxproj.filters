@@ -4,6 +4,9 @@
     <Filter Include="src">
       <UniqueIdentifier>{4679fbcb-76d8-480f-b39a-c29dc5e91953}</UniqueIdentifier>
     </Filter>
+    <Filter Include="resource">
+      <UniqueIdentifier>{e02fccba-102c-4dff-bfc1-ac6775396386}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\DX11Renderer.cpp">
@@ -20,5 +23,16 @@
     <ClInclude Include="src\stddef.h">
       <Filter>src</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="resource\SampleVertexShader.hlsl">
+      <Filter>resource</Filter>
+    </FxCompile>
+    <FxCompile Include="resource\SamplePixelShader.hlsl">
+      <Filter>resource</Filter>
+    </FxCompile>
+    <FxCompile Include="resource\shader.hlsl">
+      <Filter>resource</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>
