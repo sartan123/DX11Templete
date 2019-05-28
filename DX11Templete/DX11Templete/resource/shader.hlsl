@@ -16,13 +16,23 @@ struct PS_IN
 	float4 col : COLOR0;
 };
 
+cbuffer ConstantBuffer
+{
+	float4x4 World;         //ワールド変換行列
+	float4x4 View;          //ビュー変換行列
+	float4x4 Projection;    //透視射影変換行列
+}
+
 //頂点シェーダー
 VS_OUT VS( VS_IN input )
 {
 	VS_OUT output;
-	output.pos = input.pos;
+
+	output.pos = mul(input.pos, World);
+	output.pos = mul(output.pos, View);
+	output.pos = mul(output.pos, Projection);
 	output.col = input.col;
-    return output;
+	return output;
 }
 
 //ピクセルシェーダー

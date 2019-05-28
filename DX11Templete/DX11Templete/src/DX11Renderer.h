@@ -2,6 +2,9 @@
 #include "stddef.h"
 #include <d3d11.h>
 #include <d3dcompiler.h>
+#include <DirectXMath.h>
+
+using namespace DirectX;
 
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib,"d3dCompiler.lib")
@@ -10,6 +13,12 @@ struct Vertex
 {
 	float position[3];
 	float color[4];
+};
+
+struct ConstantBuffer {
+	XMFLOAT4X4 world;
+	XMFLOAT4X4 view;
+	XMFLOAT4X4 projection;
 };
 
 class DX11Renderer
@@ -27,6 +36,9 @@ private:
 	D3D_FEATURE_LEVEL mFeatureSupportLevel;
 	HRESULT	CreateSwapChain();
 
+	// ビューポート
+	D3D11_VIEWPORT mViewPort[1];
+
 	// バックバッファ
 	ID3D11Texture2D* mBackBuffer;
 	HRESULT CreateBackBuffer();
@@ -41,9 +53,15 @@ private:
 	void draw();
 	void update();
 
-	// 頂点バッファ
+	// 頂点バッファ・インデックスバッファ
 	ID3D11Buffer* mVertexBuffer;
+	ID3D11Buffer* mIndexBuffer;
 	HRESULT CreateVertexBuffer();
+	HRESULT CreateIndexBuffer();
+
+	// 定数バッファ
+	ID3D11Buffer* mConstBuffer;
+	HRESULT CreateConstBuffer();
 
 	// 頂点シェーダー
 	ID3D11InputLayout* VertexLayout;
@@ -53,6 +71,9 @@ private:
 	// ピクセルシェーダー
 	ID3D11PixelShader* mPixelShader;
 	HRESULT LoadPixelShader();
+
+	ID3D11GeometryShader* mGeometryShader;
+	HRESULT LoadGeometryShader();
 
 public:
 	DX11Renderer(HWND *hwnd, int Width, int Height);
