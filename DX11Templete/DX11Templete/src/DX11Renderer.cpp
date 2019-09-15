@@ -1,7 +1,8 @@
 #include "DX11Renderer.h"
 
 DX11Renderer::DX11Renderer(HWND *hwnd, int width, int height)
-: mWidth(width)
+: mHwnd(hwnd)
+, mWidth(width)
 , mHeight(height)
 , mRadian(0.0f)
 {
