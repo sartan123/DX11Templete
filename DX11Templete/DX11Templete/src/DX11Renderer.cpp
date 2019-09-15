@@ -1,9 +1,9 @@
 #include "DX11Renderer.h"
 
 DX11Renderer::DX11Renderer(HWND *hwnd, int width, int height)
-: mHwnd(hwnd)
-, mWidth(width)
+: mWidth(width)
 , mHeight(height)
+, mRadian(0.0f)
 {
 	
 }
@@ -232,6 +232,28 @@ void DX11Renderer::draw()
 void DX11Renderer::update()
 {
 	HRESULT hr;
+	mRadian += 0.0001f;
+	XMMATRIX hRotate;
+	hRotate = XMMatrixRotationY(mRadian);
+	mWorldMatrix = XMMatrixIdentity();
+	mWorldMatrix = XMMatrixMultiply(mWorldMatrix, hRotate);
+
+	XMMATRIX mvpMatrix;
+	XMMATRIX invMatrix;
+	mvpMatrix = XMMatrixIdentity();
+	mvpMatrix = XMMatrixMultiply(mvpMatrix, mWorldMatrix);
+	mvpMatrix = XMMatrixMultiply(mvpMatrix, mViewMatrix);
+	mvpMatrix = XMMatrixMultiply(mvpMatrix, mProjMatrix);
+	invMatrix = XMMatrixInverse(NULL, mvpMatrix);
+	
+	ConstantBuffer cb;
+	XMStoreFloat4x4(&cb.world, XMMatrixTranspose(mWorldMatrix));
+	XMStoreFloat4x4(&cb.view, XMMatrixTranspose(mViewMatrix));
+	XMStoreFloat4x4(&cb.projection, XMMatrixTranspose(mProjMatrix));
+	XMStoreFloat4(&cb.light, mLight);
+	XMStoreFloat4x4(&cb.invMatrix, XMMatrixTranspose(invMatrix));
+	mDeviceContext->UpdateSubresource(mConstBuffer, 0, NULL, &cb, 0, 0);
+
 	hr = mSwapChain->Present(0, 0);
 	if (FAILED(hr))
 	{
@@ -245,35 +267,35 @@ HRESULT DX11Renderer::CreateVertexBuffer()
 	HRESULT hr;
 	Vertex vertices[] =
 	{
-	{ { -0.5f,  0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f, 1.0f } },
-	{ {  0.5f,  0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f, 1.0f } },
-	{ { -0.5f, -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f, 1.0f } },
-	{ {  0.5f, -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f, 1.0f } },
+	{ { -0.5f,  0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f, 1.0f }, {  0.0f,  0.0f, -1.0f }  },
+	{ {  0.5f,  0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f, 1.0f }, {  0.0f,  0.0f, -1.0f }  },
+	{ { -0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f, 1.0f, 1.0f }, {  0.0f,  0.0f, -1.0f }  },
+	{ {  0.5f, -0.5f, -0.5f }, { 1.0f, 1.0f, 0.0f, 1.0f }, {  0.0f,  0.0f, -1.0f }  },
 
-	{ { -0.5f,  0.5f,  0.5f }, { 0.0f, 1.0f, 1.0f, 1.0f } },
-	{ { -0.5f, -0.5f,  0.5f }, { 0.0f, 1.0f, 1.0f, 1.0f } },
-	{ {  0.5f,  0.5f,  0.5f }, { 0.0f, 1.0f, 1.0f, 1.0f } },
-	{ {  0.5f, -0.5f,  0.5f }, { 0.0f, 1.0f, 1.0f, 1.0f } },
+	{ { -0.5f,  0.5f,  0.5f }, { 1.0f, 0.0f, 0.0f, 1.0f }, {  0.0f,  0.0f,  1.0f } },
+	{ { -0.5f, -0.5f,  0.5f }, { 0.0f, 1.0f, 0.0f, 1.0f }, {  0.0f,  0.0f,  1.0f } },
+	{ {  0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f, 1.0f, 1.0f }, {  0.0f,  0.0f,  1.0f } },
+	{ {  0.5f, -0.5f,  0.5f }, { 0.0f, 1.0f, 1.0f, 1.0f }, {  0.0f,  0.0f,  1.0f } },
 
-	{ { -0.5f,  0.5f,  0.5f }, { 1.0f, 1.0f, 0.0f, 1.0f } },
-	{ { -0.5f,  0.5f, -0.5f }, { 1.0f, 1.0f, 0.0f, 1.0f } },
-	{ { -0.5f, -0.5f,  0.5f }, { 1.0f, 1.0f, 0.0f, 1.0f } },
-	{ { -0.5f, -0.5f, -0.5f }, { 1.0f, 1.0f, 0.0f, 1.0f } },
+	{ { -0.5f,  0.5f,  0.5f }, { 1.0f, 0.0f, 0.0f, 1.0f }, { -1.0f,  0.0f,  0.0f }  },
+	{ { -0.5f,  0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f, 1.0f }, { -1.0f,  0.0f,  0.0f }  },
+	{ { -0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f, 1.0f, 1.0f }, { -1.0f,  0.0f,  0.0f }  },
+	{ { -0.5f, -0.5f, -0.5f }, { 1.0f, 1.0f, 0.0f, 1.0f }, { -1.0f,  0.0f,  0.0f }  },
 
-	{ {  0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f, 1.0f, 1.0f } },
-	{ {  0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f, 1.0f, 1.0f } },
-	{ {  0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f, 1.0f, 1.0f } },
-	{ {  0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f, 1.0f, 1.0f } },
+	{ {  0.5f,  0.5f,  0.5f }, { 1.0f, 0.0f, 0.0f, 1.0f }, {  1.0f,  0.0f,  0.0f }  },
+	{ {  0.5f, -0.5f,  0.5f }, { 0.0f, 1.0f, 0.0f, 1.0f }, {  1.0f,  0.0f,  0.0f }  },
+	{ {  0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f, 1.0f, 1.0f }, {  1.0f,  0.0f,  0.0f }  },
+	{ {  0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 1.0f, 1.0f }, {  1.0f,  0.0f,  0.0f }  },
 
-	{ { -0.5f,  0.5f,  0.5f }, { 1.0f, 0.0f, 1.0f, 1.0f } },
-	{ {  0.5f,  0.5f,  0.5f }, { 1.0f, 0.0f, 1.0f, 1.0f } },
-	{ { -0.5f,  0.5f, -0.5f }, { 1.0f, 0.0f, 1.0f, 1.0f } },
-	{ {  0.5f,  0.5f, -0.5f }, { 1.0f, 0.0f, 1.0f, 1.0f } },
+	{ { -0.5f,  0.5f,  0.5f }, { 1.0f, 0.0f, 0.0f, 1.0f }, {  0.0f,  1.0f,  0.0f }  },
+	{ {  0.5f,  0.5f,  0.5f }, { 0.0f, 1.0f, 0.0f, 1.0f }, {  0.0f,  1.0f,  0.0f }  },
+	{ { -0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f, 1.0f, 1.0f }, {  0.0f,  1.0f,  0.0f }  },
+	{ {  0.5f,  0.5f, -0.5f }, { 1.0f, 0.0f, 1.0f, 1.0f }, {  0.0f,  1.0f,  0.0f }  },
 
-	{ { -0.5f, -0.5f,  0.5f }, { 0.0f, 1.0f, 0.0f, 1.0f } },
-	{ { -0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f, 1.0f } },
-	{ {  0.5f, -0.5f,  0.5f }, { 0.0f, 1.0f, 0.0f, 1.0f } },
-	{ {  0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f, 1.0f } },
+	{ { -0.5f, -0.5f,  0.5f }, { 1.0f, 0.0f, 0.0f, 1.0f }, {  0.0f, -1.0f,  0.0f }  },
+	{ { -0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f, 1.0f }, {  0.0f, -1.0f,  0.0f }  },
+	{ {  0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f, 1.0f, 1.0f }, {  0.0f, -1.0f,  0.0f }  },
+	{ {  0.5f, -0.5f, -0.5f }, { 1.0f, 1.0f, 0.0f, 1.0f }, {  0.0f, -1.0f,  0.0f }  },
 	};
 
 	D3D11_BUFFER_DESC idxBufferDesc;
@@ -348,23 +370,34 @@ HRESULT DX11Renderer::CreateConstBuffer()
 	{
 		MessageBox(*mHwnd, "定数バッファの作成に失敗しました", 0, MB_OK);
 	}
-	XMMATRIX worldMatrix = XMMatrixTranslation(0.0f, 0.0f, 0.0f);
+	mWorldMatrix = XMMatrixTranslation(0.0f, 0.0f, 0.0f);
 
 	XMVECTOR eye = XMVectorSet(2.0f, 2.0f, -2.0f, 0.0f);
 	XMVECTOR focus = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
 	XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-	XMMATRIX viewMatrix = XMMatrixLookAtLH(eye, focus, up);
+	mViewMatrix = XMMatrixLookAtLH(eye, focus, up);
 
 	float    fov = XMConvertToRadians(45.0f);
 	float    aspect = mViewPort[0].Width / mViewPort[0].Height;
 	float    nearZ = 0.1f;
 	float    farZ = 100.0f;
-	XMMATRIX projMatrix = XMMatrixPerspectiveFovLH(fov, aspect, nearZ, farZ);
+	mProjMatrix = XMMatrixPerspectiveFovLH(fov, aspect, nearZ, farZ);
+
+	XMMATRIX tmpMatrix;
+	tmpMatrix = XMMatrixIdentity();
+	tmpMatrix = XMMatrixMultiply(tmpMatrix, mWorldMatrix);
+	tmpMatrix = XMMatrixMultiply(tmpMatrix, mViewMatrix);
+	tmpMatrix = XMMatrixMultiply(tmpMatrix, mProjMatrix);
+	XMMatrixInverse(NULL, tmpMatrix);
+
+	mLight = XMVector3Normalize(XMVectorSet(0.0f, 0.5f, -1.0f, 0.0f));
 
 	ConstantBuffer cb;
-	XMStoreFloat4x4(&cb.world, XMMatrixTranspose(worldMatrix));
-	XMStoreFloat4x4(&cb.view, XMMatrixTranspose(viewMatrix));
-	XMStoreFloat4x4(&cb.projection, XMMatrixTranspose(projMatrix));
+	XMStoreFloat4x4(&cb.world, XMMatrixTranspose(mWorldMatrix));
+	XMStoreFloat4x4(&cb.view, XMMatrixTranspose(mViewMatrix));
+	XMStoreFloat4x4(&cb.projection, XMMatrixTranspose(mProjMatrix));
+	XMStoreFloat4(&cb.light, mLight);
+	XMStoreFloat4x4(&cb.invMatrix, XMMatrixTranspose(tmpMatrix));
 	mDeviceContext->UpdateSubresource(mConstBuffer, 0, NULL, &cb, 0, 0);
 	return hr;
 }
@@ -389,6 +422,7 @@ HRESULT DX11Renderer::LoadVertexShader()
 	{
 	 { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	 { "COLOR",    0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	 { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	};
 	UINT numElements = sizeof(layout) / sizeof(layout[0]);
 

@@ -9,28 +9,39 @@ using namespace DirectX;
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib,"d3dCompiler.lib")
 
-struct Vertex
-{
-	float position[3];
-	float color[4];
-};
-
-struct ConstantBuffer {
-	XMFLOAT4X4 world;
-	XMFLOAT4X4 view;
-	XMFLOAT4X4 projection;
-};
-
 class DX11Renderer
 {
+	struct Vertex
+	{
+		float position[3];
+		float color[4];
+		float normal[3];
+	};
+
+	struct ConstantBuffer {
+		XMFLOAT4X4 world;
+		XMFLOAT4X4 view;
+		XMFLOAT4X4 projection;
+		XMFLOAT4   light;
+		XMFLOAT4X4 invMatrix;
+	};
+
 private:
 	int		mWidth;
 	int		mHeight;
-	HWND*    mHwnd;
+	static HWND*    mHwnd;
+
+	// 回転角
+	float mRadian;
+
+	XMMATRIX mWorldMatrix;
+	XMMATRIX mViewMatrix;
+	XMMATRIX mProjMatrix;
+	XMVECTOR mLight;
 
 	// インターフェース
-	ID3D11Device* mDevice;
-	ID3D11DeviceContext* mDeviceContext;
+	static ID3D11Device* mDevice;
+	static ID3D11DeviceContext* mDeviceContext;
 	IDXGISwapChain* mSwapChain;
 	ID3D11RenderTargetView* mRenderTargetView;
 	D3D_FEATURE_LEVEL mFeatureSupportLevel;
@@ -79,6 +90,10 @@ public:
 	DX11Renderer(HWND *hwnd, int Width, int Height);
 	~DX11Renderer();
 	HRESULT Iinitialize();
+
+	static ID3D11Device* GetStaticDevice() { return mDevice;  }
+	static ID3D11DeviceContext* GetStaticDeviceContext() { return mDeviceContext; }
+	static HWND* GetWindowHandler() { return mHwnd; }
 
 	void render();
 };
