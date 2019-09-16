@@ -15,12 +15,18 @@
     <ClCompile Include="src\main.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\BasicObject.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\DX11Renderer.h">
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="src\stddef.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\BasicObject.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>

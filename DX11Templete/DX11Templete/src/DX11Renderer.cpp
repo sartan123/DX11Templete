@@ -1,10 +1,9 @@
 #include "DX11Renderer.h"
 
-DX11Renderer::DX11Renderer(HWND *hwnd, int width, int height)
-: mHwnd(hwnd)
-, mWidth(width)
-, mHeight(height)
-, mRadian(0.0f)
+ID3D11Device* DX11Renderer::mDevice;
+ID3D11DeviceContext* DX11Renderer::mDeviceContext;
+
+DX11Renderer::DX11Renderer()
 {
 	
 }
@@ -21,18 +20,19 @@ DX11Renderer::~DX11Renderer()
 	SafeRelease(mDevice);
 }
 
-HRESULT DX11Renderer::Iinitialize()
+HRESULT DX11Renderer::Iinitialize(HWND *hwnd, int width, int height)
 {
+	mHwnd = hwnd;
+	mWidth = width;
+	mHeight = height;
+
 	HRESULT hr;
 	hr = CreateSwapChain();
 	hr = CreateBackBuffer();
 	hr = CreateDepthStencilBuffer();
 
-	hr = CreateVertexBuffer();
-	hr = CreateIndexBuffer();
-	hr = CreateConstBuffer();
-	hr = LoadPixelShader();
-	hr = LoadVertexShader();
+	objects.push_back(new BasicObject());
+
 	return hr;
 }
 
@@ -221,259 +221,25 @@ void DX11Renderer::clear()
 // 描画処理
 void DX11Renderer::draw()
 {
-	//使用するシェーダーの登録
-	mDeviceContext->VSSetConstantBuffers(0, 1, &mConstBuffer);
-	mDeviceContext->VSSetShader(mVertexShader, NULL, 0);
-	mDeviceContext->PSSetShader(mPixelShader, NULL, 0);
-	//プリミティブをレンダリング
-	mDeviceContext->DrawIndexed(36, 0, 0);
+	for (size_t i = 0; i < objects.size(); i++)
+	{
+		objects[i]->draw();
+	}
 }
 
 // 画面更新
 void DX11Renderer::update()
 {
 	HRESULT hr;
-	mRadian += 0.0001f;
-	XMMATRIX hRotate;
-	hRotate = XMMatrixRotationY(mRadian);
-	mWorldMatrix = XMMatrixIdentity();
-	mWorldMatrix = XMMatrixMultiply(mWorldMatrix, hRotate);
 
-	XMMATRIX mvpMatrix;
-	XMMATRIX invMatrix;
-	mvpMatrix = XMMatrixIdentity();
-	mvpMatrix = XMMatrixMultiply(mvpMatrix, mWorldMatrix);
-	mvpMatrix = XMMatrixMultiply(mvpMatrix, mViewMatrix);
-	mvpMatrix = XMMatrixMultiply(mvpMatrix, mProjMatrix);
-	invMatrix = XMMatrixInverse(NULL, mvpMatrix);
-	
-	ConstantBuffer cb;
-	XMStoreFloat4x4(&cb.world, XMMatrixTranspose(mWorldMatrix));
-	XMStoreFloat4x4(&cb.view, XMMatrixTranspose(mViewMatrix));
-	XMStoreFloat4x4(&cb.projection, XMMatrixTranspose(mProjMatrix));
-	XMStoreFloat4(&cb.light, mLight);
-	XMStoreFloat4x4(&cb.invMatrix, XMMatrixTranspose(invMatrix));
-	mDeviceContext->UpdateSubresource(mConstBuffer, 0, NULL, &cb, 0, 0);
+	for (size_t i = 0; i < objects.size(); i++)
+	{
+		objects[i]->update();
+	}
 
 	hr = mSwapChain->Present(0, 0);
 	if (FAILED(hr))
 	{
 		throw std::runtime_error("Failed to Screen Update");
 	}
-}
-
-// 頂点バッファの作成
-HRESULT DX11Renderer::CreateVertexBuffer()
-{
-	HRESULT hr;
-	Vertex vertices[] =
-	{
-	{ { -0.5f,  0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f, 1.0f }, {  0.0f,  0.0f, -1.0f }  },
-	{ {  0.5f,  0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f, 1.0f }, {  0.0f,  0.0f, -1.0f }  },
-	{ { -0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f, 1.0f, 1.0f }, {  0.0f,  0.0f, -1.0f }  },
-	{ {  0.5f, -0.5f, -0.5f }, { 1.0f, 1.0f, 0.0f, 1.0f }, {  0.0f,  0.0f, -1.0f }  },
-
-	{ { -0.5f,  0.5f,  0.5f }, { 1.0f, 0.0f, 0.0f, 1.0f }, {  0.0f,  0.0f,  1.0f } },
-	{ { -0.5f, -0.5f,  0.5f }, { 0.0f, 1.0f, 0.0f, 1.0f }, {  0.0f,  0.0f,  1.0f } },
-	{ {  0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f, 1.0f, 1.0f }, {  0.0f,  0.0f,  1.0f } },
-	{ {  0.5f, -0.5f,  0.5f }, { 0.0f, 1.0f, 1.0f, 1.0f }, {  0.0f,  0.0f,  1.0f } },
-
-	{ { -0.5f,  0.5f,  0.5f }, { 1.0f, 0.0f, 0.0f, 1.0f }, { -1.0f,  0.0f,  0.0f }  },
-	{ { -0.5f,  0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f, 1.0f }, { -1.0f,  0.0f,  0.0f }  },
-	{ { -0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f, 1.0f, 1.0f }, { -1.0f,  0.0f,  0.0f }  },
-	{ { -0.5f, -0.5f, -0.5f }, { 1.0f, 1.0f, 0.0f, 1.0f }, { -1.0f,  0.0f,  0.0f }  },
-
-	{ {  0.5f,  0.5f,  0.5f }, { 1.0f, 0.0f, 0.0f, 1.0f }, {  1.0f,  0.0f,  0.0f }  },
-	{ {  0.5f, -0.5f,  0.5f }, { 0.0f, 1.0f, 0.0f, 1.0f }, {  1.0f,  0.0f,  0.0f }  },
-	{ {  0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f, 1.0f, 1.0f }, {  1.0f,  0.0f,  0.0f }  },
-	{ {  0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 1.0f, 1.0f }, {  1.0f,  0.0f,  0.0f }  },
-
-	{ { -0.5f,  0.5f,  0.5f }, { 1.0f, 0.0f, 0.0f, 1.0f }, {  0.0f,  1.0f,  0.0f }  },
-	{ {  0.5f,  0.5f,  0.5f }, { 0.0f, 1.0f, 0.0f, 1.0f }, {  0.0f,  1.0f,  0.0f }  },
-	{ { -0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f, 1.0f, 1.0f }, {  0.0f,  1.0f,  0.0f }  },
-	{ {  0.5f,  0.5f, -0.5f }, { 1.0f, 0.0f, 1.0f, 1.0f }, {  0.0f,  1.0f,  0.0f }  },
-
-	{ { -0.5f, -0.5f,  0.5f }, { 1.0f, 0.0f, 0.0f, 1.0f }, {  0.0f, -1.0f,  0.0f }  },
-	{ { -0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f, 1.0f }, {  0.0f, -1.0f,  0.0f }  },
-	{ {  0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f, 1.0f, 1.0f }, {  0.0f, -1.0f,  0.0f }  },
-	{ {  0.5f, -0.5f, -0.5f }, { 1.0f, 1.0f, 0.0f, 1.0f }, {  0.0f, -1.0f,  0.0f }  },
-	};
-
-	D3D11_BUFFER_DESC idxBufferDesc;
-	idxBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-	idxBufferDesc.ByteWidth = sizeof(Vertex) * 24;
-	idxBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	idxBufferDesc.CPUAccessFlags = 0;
-	idxBufferDesc.MiscFlags = 0;
-	idxBufferDesc.StructureByteStride = 0;
-	D3D11_SUBRESOURCE_DATA InitData;
-	InitData.pSysMem = vertices;
-	hr = mDevice->CreateBuffer(&idxBufferDesc, &InitData, &mVertexBuffer);
-	if (FAILED(hr))
-	{
-		MessageBox(*mHwnd, "頂点バッファの作成に失敗しました", 0, MB_OK);
-	}
-	UINT stride = sizeof(Vertex);
-	UINT offset = 0;
-	mDeviceContext->IASetVertexBuffers(0, 1, &mVertexBuffer, &stride, &offset);
-	mDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	return hr;
-}
-
-// インデックスバッファの作成
-HRESULT DX11Renderer::CreateIndexBuffer()
-{
-	HRESULT hr;
-	WORD g_IndexList[]{
-	 0,  1,  2,     3,  2,  1,
-	 4,  5,  6,     7,  6,  5,
-	 8,  9, 10,    11, 10,  9,
-	12, 13, 14,    15, 14, 13,
-	16, 17, 18,    19, 18, 17,
-	20, 21, 22,    23, 22, 21,
-	};
-	D3D11_BUFFER_DESC ibDesc;
-	ibDesc.ByteWidth = sizeof(WORD) * 36;
-	ibDesc.Usage = D3D11_USAGE_DEFAULT;
-	ibDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-	ibDesc.CPUAccessFlags = 0;
-	ibDesc.MiscFlags = 0;
-	ibDesc.StructureByteStride = 0;
-
-	D3D11_SUBRESOURCE_DATA irData;
-	irData.pSysMem = g_IndexList;
-	irData.SysMemPitch = 0;
-	irData.SysMemSlicePitch = 0;
-
-	hr = mDevice->CreateBuffer(&ibDesc, &irData, &mIndexBuffer);
-	if (FAILED(hr))
-	{
-		MessageBox(*mHwnd, "インデックスバッファの作成に失敗しました", 0, MB_OK);
-	}
-	mDeviceContext->IASetIndexBuffer(mIndexBuffer, DXGI_FORMAT_R16_UINT, 0);
-	return hr;
-}
-
-// 定数バッファの作成
-HRESULT DX11Renderer::CreateConstBuffer()
-{
-	HRESULT hr;
-	D3D11_BUFFER_DESC cbDesc;
-	cbDesc.ByteWidth = sizeof(ConstantBuffer);
-	cbDesc.Usage = D3D11_USAGE_DEFAULT;
-	cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	cbDesc.CPUAccessFlags = 0;
-	cbDesc.MiscFlags = 0;
-	cbDesc.StructureByteStride = 0;
-
-	hr = mDevice->CreateBuffer(&cbDesc, NULL, &mConstBuffer);
-	if (FAILED(hr))
-	{
-		MessageBox(*mHwnd, "定数バッファの作成に失敗しました", 0, MB_OK);
-	}
-	mWorldMatrix = XMMatrixTranslation(0.0f, 0.0f, 0.0f);
-
-	XMVECTOR eye = XMVectorSet(2.0f, 2.0f, -2.0f, 0.0f);
-	XMVECTOR focus = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
-	XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-	mViewMatrix = XMMatrixLookAtLH(eye, focus, up);
-
-	float    fov = XMConvertToRadians(45.0f);
-	float    aspect = mViewPort[0].Width / mViewPort[0].Height;
-	float    nearZ = 0.1f;
-	float    farZ = 100.0f;
-	mProjMatrix = XMMatrixPerspectiveFovLH(fov, aspect, nearZ, farZ);
-
-	XMMATRIX tmpMatrix;
-	tmpMatrix = XMMatrixIdentity();
-	tmpMatrix = XMMatrixMultiply(tmpMatrix, mWorldMatrix);
-	tmpMatrix = XMMatrixMultiply(tmpMatrix, mViewMatrix);
-	tmpMatrix = XMMatrixMultiply(tmpMatrix, mProjMatrix);
-	XMMatrixInverse(NULL, tmpMatrix);
-
-	mLight = XMVector3Normalize(XMVectorSet(0.0f, 0.5f, -1.0f, 0.0f));
-
-	ConstantBuffer cb;
-	XMStoreFloat4x4(&cb.world, XMMatrixTranspose(mWorldMatrix));
-	XMStoreFloat4x4(&cb.view, XMMatrixTranspose(mViewMatrix));
-	XMStoreFloat4x4(&cb.projection, XMMatrixTranspose(mProjMatrix));
-	XMStoreFloat4(&cb.light, mLight);
-	XMStoreFloat4x4(&cb.invMatrix, XMMatrixTranspose(tmpMatrix));
-	mDeviceContext->UpdateSubresource(mConstBuffer, 0, NULL, &cb, 0, 0);
-	return hr;
-}
-
-HRESULT DX11Renderer::LoadVertexShader()
-{
-	ID3DBlob *pCompiledShader = NULL;
-	//ブロブから頂点シェーダー作成
-	if (FAILED(D3DCompileFromFile(L"resource\\shader.hlsl", NULL, NULL, "VS", "vs_5_0", 0, 0, &pCompiledShader, NULL)))
-	{
-		MessageBox(0, "頂点シェーダー読み込み失敗", NULL, MB_OK);
-		return E_FAIL;
-	}
-	if (FAILED(mDevice->CreateVertexShader(pCompiledShader->GetBufferPointer(), pCompiledShader->GetBufferSize(), NULL, &mVertexShader)))
-	{
-		SafeRelease(pCompiledShader);
-		MessageBox(0, "頂点シェーダー作成失敗", NULL, MB_OK);
-		return E_FAIL;
-	}
-	//頂点インプットレイアウトを定義 
-	D3D11_INPUT_ELEMENT_DESC layout[] =
-	{
-	 { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-	 { "COLOR",    0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-	 { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-	};
-	UINT numElements = sizeof(layout) / sizeof(layout[0]);
-
-	//頂点インプットレイアウトを作成
-	if (FAILED(mDevice->CreateInputLayout(layout, numElements, pCompiledShader->GetBufferPointer(), pCompiledShader->GetBufferSize(), &VertexLayout)))
-	{
-		SafeRelease(pCompiledShader);
-		return E_FAIL;
-	}
-	SafeRelease(pCompiledShader);
-
-	//頂点インプットレイアウトをセット
-	mDeviceContext->IASetInputLayout(VertexLayout);
-	return S_OK;
-}
-
-HRESULT DX11Renderer::LoadPixelShader()
-{
-	ID3DBlob *pCompiledShader = NULL;
-	//ブロブからピクセルシェーダー作成
-	if (FAILED(D3DCompileFromFile(L"resource\\shader.hlsl", NULL, NULL, "PS", "ps_5_0", 0, 0, &pCompiledShader, NULL)))
-	{
-		MessageBox(0, "ピクセルシェーダー読み込み失敗", NULL, MB_OK);
-		return E_FAIL;
-	}
-	if (FAILED(mDevice->CreatePixelShader(pCompiledShader->GetBufferPointer(), pCompiledShader->GetBufferSize(), NULL, &mPixelShader)))
-	{
-		SafeRelease(pCompiledShader);
-		MessageBox(0, "ピクセルシェーダー作成失敗", NULL, MB_OK);
-		return E_FAIL;
-	}
-	SafeRelease(pCompiledShader);
-	return S_OK;
-}
-
-HRESULT DX11Renderer::LoadGeometryShader()
-{
-	ID3DBlob *pCompiledShader = NULL;
-	//ブロブからジオメトリシェーダー作成
-	if (FAILED(D3DCompileFromFile(L"resource\\shader.hlsl", NULL, NULL, "GS", "gs_5_0", 0, 0, &pCompiledShader, NULL)))
-	{
-		MessageBox(0, "ジオメトリシェーダー読み込み失敗", NULL, MB_OK);
-		return E_FAIL;
-	}
-	if (FAILED(mDevice->CreateGeometryShader(pCompiledShader->GetBufferPointer(), pCompiledShader->GetBufferSize(), NULL, &mGeometryShader)))
-	{
-		SafeRelease(pCompiledShader);
-		MessageBox(0, "ジオメトリシェーダー作成失敗", NULL, MB_OK);
-		return E_FAIL;
-	}
-	SafeRelease(pCompiledShader);
-	return S_OK;
 }

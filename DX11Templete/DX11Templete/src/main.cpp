@@ -26,8 +26,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPreInst, LPTSTR lpCmdLine, in
 	ShowWindow(hwnd, nCmdShow);
 	UpdateWindow(hwnd);
 
-	DX11Renderer*   renderer = new DX11Renderer(&hwnd, WINDOW_WIDTH, WINDOW_HEIGHT);
-	if (FAILED(renderer->Iinitialize()))
+	DX11Renderer*   renderer = new DX11Renderer();
+	if (FAILED(renderer->Iinitialize(&hwnd, WINDOW_WIDTH, WINDOW_HEIGHT)))
 	{
 		return -1;
 	}

@@ -1,28 +1,9 @@
 #pragma once
 #include "stddef.h"
 #include <d3d11.h>
-#include <d3dcompiler.h>
-#include <DirectXMath.h>
-
-using namespace DirectX;
+#include "BasicObject.h"
 
 #pragma comment(lib, "d3d11.lib")
-#pragma comment(lib,"d3dCompiler.lib")
-
-struct Vertex
-{
-	float position[3];
-	float color[4];
-	float normal[3];
-};
-
-struct ConstantBuffer {
-	XMFLOAT4X4 world;
-	XMFLOAT4X4 view;
-	XMFLOAT4X4 projection;
-	XMFLOAT4   light;
-	XMFLOAT4X4 invMatrix;
-};
 
 class DX11Renderer
 {
@@ -31,17 +12,9 @@ private:
 	int		mHeight;
 	HWND*    mHwnd;
 
-	// 回転角
-	float mRadian;
-
-	XMMATRIX mWorldMatrix;
-	XMMATRIX mViewMatrix;
-	XMMATRIX mProjMatrix;
-	XMVECTOR mLight;
-
 	// インターフェース
-	ID3D11Device* mDevice;
-	ID3D11DeviceContext* mDeviceContext;
+	static ID3D11Device* mDevice;
+	static ID3D11DeviceContext* mDeviceContext;
 	IDXGISwapChain* mSwapChain;
 	ID3D11RenderTargetView* mRenderTargetView;
 	D3D_FEATURE_LEVEL mFeatureSupportLevel;
@@ -59,37 +32,21 @@ private:
 	ID3D11DepthStencilView* mDepthStencilView;
 	HRESULT CreateDepthStencilBuffer();
 
+	std::vector<BasicObject*> objects;
+
 	//レンダー
 	void clear();
 	void draw();
 	void update();
 
-	// 頂点バッファ・インデックスバッファ
-	ID3D11Buffer* mVertexBuffer;
-	ID3D11Buffer* mIndexBuffer;
-	HRESULT CreateVertexBuffer();
-	HRESULT CreateIndexBuffer();
-
-	// 定数バッファ
-	ID3D11Buffer* mConstBuffer;
-	HRESULT CreateConstBuffer();
-
-	// 頂点シェーダー
-	ID3D11InputLayout* VertexLayout;
-	ID3D11VertexShader* mVertexShader;
-	HRESULT LoadVertexShader();
-
-	// ピクセルシェーダー
-	ID3D11PixelShader* mPixelShader;
-	HRESULT LoadPixelShader();
-
-	ID3D11GeometryShader* mGeometryShader;
-	HRESULT LoadGeometryShader();
 
 public:
-	DX11Renderer(HWND *hwnd, int Width, int Height);
+	DX11Renderer();
 	~DX11Renderer();
-	HRESULT Iinitialize();
+	HRESULT Iinitialize(HWND *hwnd, int Width, int Height);
+
+	static ID3D11Device* GetDevice() { return mDevice; }
+	static ID3D11DeviceContext* GetDeviceContext() { return mDeviceContext; }
 
 	void render();
 };
